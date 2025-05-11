@@ -21,12 +21,12 @@ CostmapNode::CostmapNode() : Node("costmap"), costmap_(robot::CostmapCore(this->
 void CostmapNode::publishMessage() {
   auto message = std_msgs::msg::String();
   message.data = "Hello, ROS 2!";
-  RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
+  // RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
   string_pub_->publish(message);
 }
 
 void CostmapNode::subscribeMessage(const std_msgs::msg::String::SharedPtr msg) const {
-  RCLCPP_INFO(this->get_logger(), "I heard: '%s'", msg->data.c_str());
+  // RCLCPP_INFO(this->get_logger(), "I heard: '%s'", msg->data.c_str());
 }
 
 void CostmapNode::convert_to_grid(double range, double angle, int& x_grid, int& y_grid) {
@@ -34,7 +34,7 @@ void CostmapNode::convert_to_grid(double range, double angle, int& x_grid, int& 
   y_grid = range * std::sin(angle);
   x_grid = static_cast<int>((x_grid - origin_x)/resolution);
   y_grid = static_cast<int>((y_grid - origin_y)/resolution);
-  RCLCPP_INFO(this->get_logger(), "CTGGGGGGGGG");
+  // RCLCPP_INFO(this->get_logger(), "CTGGGGGGGGG");
 }
 
 void CostmapNode::lidar_subscribe(sensor_msgs::msg::LaserScan::SharedPtr scan) {
@@ -48,14 +48,13 @@ void CostmapNode::lidar_subscribe(sensor_msgs::msg::LaserScan::SharedPtr scan) {
         if (x_grid < 0 || x_grid >= GRID_SIZE || y_grid < 0 || y_grid >= GRID_SIZE) {
           continue;
         }
+
         occupancy_grid[x_grid][y_grid] = max_cost;
         for (int x_inflation = 0; x_inflation < GRID_SIZE; ++x_inflation) {
           for (int y_inflation = 0; y_inflation < GRID_SIZE; ++y_inflation) {
-            RCLCPP_INFO(this->get_logger(), "UPDATING OCCUPANCY GRID.............");
             double distance = std::sqrt(std::pow(x_inflation - x_grid, 2) + std::pow(y_inflation - y_grid, 2));
             double cost = max_cost * (1 - (distance/inf_radius));
             occupancy_grid[x_inflation][y_inflation] = std::max(occupancy_grid[x_inflation][y_inflation], cost);
-            RCLCPP_INFO(this->get_logger(), "DONE: UPDATED OCCUPANCY GRID");
           }
         }
     }
@@ -75,14 +74,12 @@ void CostmapNode::lidar_subscribe(sensor_msgs::msg::LaserScan::SharedPtr scan) {
 
   costmap_grid.data.resize(GRID_SIZE * GRID_SIZE);
 
-  RCLCPP_INFO(this->get_logger(), "FLATTENING THE LIST..............");
   for (int i = 0; i < GRID_SIZE; ++i) {
     for (int j = 0; j < GRID_SIZE; ++j) {
       costmap_grid.data[i * GRID_SIZE + j] = occupancy_grid[i][j];
     }
   }
 
-  RCLCPP_INFO(this->get_logger(), "DONE: FLATTENED THE LIST");
   costmap_grid_pub->publish(costmap_grid);
   RCLCPP_INFO(this->get_logger(), "DONE: PUBLISHED!");
 }
