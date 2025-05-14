@@ -30,7 +30,7 @@ class MapMemoryNode : public rclcpp::Node {
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr map_pub_;
     rclcpp::TimerBase::SharedPtr timer_;
 
-    std::vector<std::vector<double>> globalmap_2d;
+    std::vector<std::vector<int>> globalmap_2d;
 
     // Global map and robot position
     nav_msgs::msg::OccupancyGrid global_map_;
@@ -42,8 +42,8 @@ class MapMemoryNode : public rclcpp::Node {
     double ox, oy, oz, ow;
     double yaw;
 
-    bool costmap_updated_ = false;
-    bool should_update_map_ = false;
+    bool costmap_updated_ = true;
+    bool should_update_map_ = true;
 };
 
 #endif 
