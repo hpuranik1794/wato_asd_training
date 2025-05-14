@@ -10,24 +10,19 @@
 class CostmapNode : public rclcpp::Node {
   public:
     CostmapNode();
-    
-    // Place callback function here
-    void publishMessage();
-    // void initializeCostmap();
-    void subscribeMessage(const std_msgs::msg::String::SharedPtr msg) const;
     void lidar_subscribe(sensor_msgs::msg::LaserScan::SharedPtr scan);
 
- 
   private:
     robot::CostmapCore costmap_;
     double origin_x = -20; double origin_y = -20;
-    int GRID_SIZE = 401;
-    double max_cost = 100;
+    int GRID_SIZE = 400;
+    int max_cost = 100;
     int inf_radius = 10;
     double resolution = 0.1;
-    std::vector<std::vector<double>> occupancy_grid;
+    std::vector<std::vector<int>> occupancy_grid;
 
-    void convert_to_grid(double range, double angle, int& x_grid, int& y_grid);
+    void inflateObstacles();
+    void convertToGrid(double range, double angle, int& x_grid, int& y_grid);
 
     
     // Place these constructs here
