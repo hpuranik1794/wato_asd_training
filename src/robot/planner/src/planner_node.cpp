@@ -39,7 +39,7 @@ geometry_msgs::msg::PoseStamped PlannerNode::gridToPose(const CellIndex& c) cons
 
 bool PlannerNode::isFree(CellIndex& g) const {
   int gx = g.x, gy = g.y;
-  int idx = gx * static_cast<int>(current_map_.info.height) + gy;
+  int idx = gy * static_cast<int>(current_map_.info.width) + gx;  // y * width + x
   return current_map_.data[idx] >= 0 && current_map_.data[idx] < 25;     // free or unknown but not lethal
 }
 
