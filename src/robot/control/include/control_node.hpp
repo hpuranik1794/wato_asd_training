@@ -16,8 +16,8 @@ class ControlNode : public rclcpp::Node {
 
   private:
     double lookahead_dist = 1.2;
-    double goal_tolerance = 0.5;
-    double linear_speed = 0.5;
+    double goal_tolerance = 0.1;
+    double linear_speed = 0.8;
   
     rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr path_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;

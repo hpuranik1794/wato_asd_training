@@ -53,7 +53,7 @@ std::optional<geometry_msgs::msg::PoseStamped> ControlNode::findLookaheadPoint()
 
 geometry_msgs::msg::Twist ControlNode::computeVelocity(const geometry_msgs::msg::PoseStamped &target) {
   const auto robot = robot_odom_->pose.pose.position;
-  geometry_msgs::msg::Twist cmd_vel;
+  
   double yaw = extractYaw(robot_odom_->pose.pose.orientation);
   double dx  = target.pose.position.x - robot.x;
   double dy  = target.pose.position.y - robot.y;
@@ -69,9 +69,9 @@ geometry_msgs::msg::Twist ControlNode::computeVelocity(const geometry_msgs::msg:
 
   RCLCPP_INFO(this->get_logger(), "Speed: %f, Angle: %f", linear_speed, angle);
 
-  geometry_msgs::msg::Twist cmd;
-  cmd.linear.x = linear_speed;
-  cmd.angular.z = angle;
+  geometry_msgs::msg::Twist cmd_vel;
+  cmd_vel.linear.x = linear_speed;
+  cmd_vel.angular.z = angle;
   return cmd_vel;
 }
 
