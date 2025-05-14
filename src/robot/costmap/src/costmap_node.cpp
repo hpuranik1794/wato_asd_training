@@ -7,7 +7,7 @@ using std::placeholders::_1;
  
 CostmapNode::CostmapNode() : Node("costmap"), costmap_(robot::CostmapCore(this->get_logger())) {
   // Initialize the constructs and their parameters
-  occupancy_grid = std::vector<std::vector<int>>(400, std::vector<int>(400, 0));
+  occupancy_grid = std::vector<std::vector<int>>(GRID_SIZE, std::vector<int>(GRID_SIZE, 0));
   lidar_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>("/lidar", 10, std::bind(&CostmapNode::lidar_subscribe, this, _1));
   costmap_grid_pub = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/costmap", 10);
 }
@@ -23,19 +23,19 @@ void CostmapNode::convertToGrid(double range, double angle, int& x_grid, int& y_
 
 void CostmapNode::inflateObstacles() {
   for (int i = 0; i < GRID_SIZE ; ++i) {
-    for (int j = 0; j < GRID_SIZE; j++) {
-      if (occupancy_grid[i][j] == 100) {
+    for (int j = 0; j < GRID_SIZE; ++j) {
+      if (occupancy_grid[i][j] == max_cost) {
         for (int x_inf = i - inf_radius; x_inf < i + inf_radius; ++x_inf) {
           for (int y_inf = j - inf_radius; y_inf < j + inf_radius; ++y_inf) {
             if (x_inf >= 0 && x_inf < GRID_SIZE && y_inf >= 0 && y_inf < GRID_SIZE) {
               double ed = resolution * sqrt(std::pow(((i - x_inf)), 2) + std::pow((j - y_inf), 2));
 
-              if (ed <= inf_radius) {
-                int cost = (int)(max_cost * (1 - (ed/inf_radius)));
+              if (ed <= inf_radius && occupancy_grid[x_inf][y_inf] < max_cost) {
+                int cost = (int)(max_cost * (1 - (double)(ed/inf_radius)));
                 if (occupancy_grid[x_inf][y_inf] < cost) {
                   occupancy_grid[x_inf][y_inf] = cost;
                 }
-              }              
+              }           
             }
           }
         }
@@ -52,8 +52,10 @@ void CostmapNode::lidar_subscribe(sensor_msgs::msg::LaserScan::SharedPtr scan) {
       // Calculate grid coordinates
       int x_grid = 0, y_grid = 0;
       convertToGrid(range, angle, x_grid, y_grid);
+
+      // mark obstacle in occupancy grid
       if (x_grid >= 0 && x_grid < GRID_SIZE && y_grid >= 0 && y_grid < GRID_SIZE) {
-        occupancy_grid[x_grid][y_grid] = max_cost;
+        occupancy_grid[y_grid][x_grid] = max_cost;
       }
     }
   }
@@ -74,9 +76,15 @@ void CostmapNode::lidar_subscribe(sensor_msgs::msg::LaserScan::SharedPtr scan) {
 
   costmap_grid.data.resize(GRID_SIZE * GRID_SIZE);
 
-  for (int i = 0; i < GRID_SIZE; ++i) {
-    for (int j = 0; j < GRID_SIZE; ++j) {
-      costmap_grid.data[i * GRID_SIZE + j] = occupancy_grid[j][i];
+  for (int i = 0; i < GRID_SIZE; ++i) {  // height
+    for (int j = 0; j < GRID_SIZE; ++j) {  // width
+      int cost = occupancy_grid[i][j];
+      if (cost > max_cost) {
+        cost = max_cost;
+      } else if (cost < 0) {
+        cost = 0;
+      }
+      costmap_grid.data[i * GRID_SIZE + j] = cost; // y * width + x
     }
   }
 

@@ -6,6 +6,8 @@
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "costmap_core.hpp"
+
+#define GRID_SIZE 400
  
 class CostmapNode : public rclcpp::Node {
   public:
@@ -14,8 +16,8 @@ class CostmapNode : public rclcpp::Node {
 
   private:
     robot::CostmapCore costmap_;
-    double origin_x = -20; double origin_y = -20;
-    int GRID_SIZE = 400;
+    double origin_x = -20.0;
+    double origin_y = -20.0;
     int max_cost = 100;
     int inf_radius = 10;
     double resolution = 0.1;
