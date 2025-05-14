@@ -38,6 +38,10 @@ class MapMemoryNode : public rclcpp::Node {
     const double distance_threshold = 1.5;
     nav_msgs::msg::OccupancyGrid latest_costmap_;
 
+    // robot orientation
+    double ox, oy, oz, ow;
+    double yaw;
+
     bool costmap_updated_ = false;
     bool should_update_map_ = false;
 };

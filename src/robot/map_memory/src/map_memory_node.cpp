@@ -17,7 +17,7 @@ MapMemoryNode::MapMemoryNode() : Node("map_memory"), map_memory_(robot::MapMemor
       std::chrono::seconds(1), std::bind(&MapMemoryNode::updateMap, this));
 
   // Initialize 2D map
-  globalmap_2d = std::vector<std::vector<double>>(GLOBALMAP_GRID_SIZE, std::vector<double>(GLOBALMAP_GRID_SIZE, -1.0));
+  globalmap_2d = std::vector<std::vector<double>>(GLOBALMAP_GRID_SIZE, std::vector<double>(GLOBALMAP_GRID_SIZE, 0.0));
   
   // Initialize global map
   global_map_.info.resolution = 0.1;
@@ -29,7 +29,7 @@ MapMemoryNode::MapMemoryNode() : Node("map_memory"), map_memory_(robot::MapMemor
 }
 
 void MapMemoryNode::costmapCallback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
-  RCLCPP_INFO(this->get_logger(), "RECEIVED NEW COSTMAP");
+  // RCLCPP_INFO(this->get_logger(), "RECEIVED NEW COSTMAP");
   latest_costmap_ = *msg;
   costmap_updated_ = true;
 }
@@ -37,8 +37,16 @@ void MapMemoryNode::costmapCallback(const nav_msgs::msg::OccupancyGrid::SharedPt
 void MapMemoryNode::odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg) {
   double x = msg->pose.pose.position.x;
   double y = msg->pose.pose.position.y;
-  RCLCPP_INFO(this->get_logger(), "Robot (x): '%f'", x);
-  RCLCPP_INFO(this->get_logger(), "Robot (y): '%f'", y);
+  // RCLCPP_INFO(this->get_logger(), "Robot (x): '%f'", x);
+  // RCLCPP_INFO(this->get_logger(), "Robot (y): '%f'", y);
+
+  ox = msg->pose.pose.orientation.x;
+  oy = msg->pose.pose.orientation.y;
+  oz = msg->pose.pose.orientation.z;
+  ow = msg->pose.pose.orientation.w;
+  
+  yaw = std::atan2(2.0 * (ow * oz + ox * oy), 1.0 - 2.0 * (oy * oy + oz * oz));
+  // RCLCPP_INFO(this->get_logger(), "Robot (yaw): '%f'", yaw);
 
   // Compute distance traveled
   double distance = std::sqrt(std::pow(x - last_x, 2) + std::pow(y - last_y, 2));
@@ -63,22 +71,28 @@ void MapMemoryNode::integrateCostmap() {
   int costmap_width = latest_costmap_.info.width, costmap_height = latest_costmap_.info.height;
 
   // convert costmap 1D array to 2D array
-  std::vector<std::vector<double>> costmap_2d(costmap_height, std::vector<double>(costmap_width, 0));
-  for (int i=0; i<costmap_width; ++i) {
-    for (int j=0; j<costmap_height; ++j) {
-      costmap_2d[i][j] = latest_costmap_.data[COSTMAP_GRID_SIZE * i + j];
+  std::vector<std::vector<double>> costmap_2d(costmap_height, std::vector<double>(costmap_width, 0.0));
+  for (int i=0; i<costmap_height; ++i) {
+    for (int j=0; j<costmap_width; ++j) {
+      costmap_2d[j][i] = latest_costmap_.data[COSTMAP_GRID_SIZE * i + j];
     }
   }
 
-  for (int i=0; i<costmap_width; ++i) {
-    for (int j=0; j<costmap_height; ++j) {
-      if (costmap_2d[i][j]==0.0) continue;
+  for (int i=0; i<costmap_height; ++i) {
+    for (int j=0; j<costmap_width; ++j) {
+      if (costmap_2d[j][i]==0.0) continue;
 
-      // calculate index wrt the robot's position in costmap (i - 20, j - 20)
-      int rel_x = i * latest_costmap_.info.resolution + latest_costmap_.info.origin.position.x;
-      int rel_y = j * latest_costmap_.info.resolution + latest_costmap_.info.origin.position.y;
+      // calculate index wrt the robot's position in costmap (j - 20, i - 20)
+      double rel_x = j * latest_costmap_.info.resolution + latest_costmap_.info.origin.position.x;
+      double rel_y = i * latest_costmap_.info.resolution + latest_costmap_.info.origin.position.y;
 
-      // shift the indices based on foxglove grid (i - 20 + 15, j - 20 + 15)
+      // calculate index wrt the robot's orientation in grid
+      double rel_x_rotated = rel_x * std::cos(yaw) - rel_y * std::sin(yaw);
+      double rel_y_rotated = rel_x * std::sin(yaw) + rel_y * std::cos(yaw);
+      rel_x = rel_x_rotated + last_x;
+      rel_y = rel_y_rotated + last_y;
+
+      // re-shift the origin (adj_j - 20 + 15, adj_i - 20 + 15)
       int abs_x = (int)((rel_x - global_map_.info.origin.position.x)/global_map_.info.resolution);
       int abs_y = (int)((rel_y - global_map_.info.origin.position.y)/global_map_.info.resolution);
       
@@ -88,19 +102,22 @@ void MapMemoryNode::integrateCostmap() {
       }
       
       // update based on priorities
-      globalmap_2d[abs_x][abs_y] = costmap_2d[i][j] * 0.75 + globalmap_2d[abs_x][abs_y] * 0.25;
+      globalmap_2d[abs_x][abs_y] = costmap_2d[j][i] * 0.75 + globalmap_2d[abs_x][abs_y] * 0.25;
     }
   }
+
+  global_map_.header.frame_id = "sim_world";
+  global_map_.header.stamp = this->now();
 
   // flatten 2D global map
   global_map_.data.resize(GLOBALMAP_GRID_SIZE * GLOBALMAP_GRID_SIZE);
 
   for (int i=0; i<GLOBALMAP_GRID_SIZE; ++i) {
     for (int j=0; j<GLOBALMAP_GRID_SIZE; ++j) {
-      global_map_.data[i * GLOBALMAP_GRID_SIZE + j] = globalmap_2d[i][j];
+      global_map_.data[i * GLOBALMAP_GRID_SIZE + j] = globalmap_2d[j][i];
     }
   }
-  RCLCPP_INFO(this->get_logger(), "DONE: UPDATED GLOBAL MAP");
+  RCLCPP_INFO(this->get_logger(), "DONE: Updated global map");
 }
 
 
