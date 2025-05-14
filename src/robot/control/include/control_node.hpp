@@ -15,26 +15,23 @@ class ControlNode : public rclcpp::Node {
     ControlNode();
 
   private:
-    /* ---------- parameters ---------- */
-    static constexpr double kLookahead = 1.0;        // [m]
-    static constexpr double kGoalTol   = 0.15;       // [m]
-    static constexpr double kCruise    = 0.40;       // [m/s]
-    static constexpr double kMaxAng    = 1.50;       // [rad/s]
+    double lookahead_dist = 1.2;
+    double goal_tolerance = 0.5;
+    double linear_speed = 0.5;
   
-    /* ---------- ROS I/O ---------- */
-    rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr      path_sub_;
-    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr  odom_sub_;
-    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr   cmd_pub_;
-    rclcpp::TimerBase::SharedPtr                               timer_;
+    rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr path_sub_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
+    rclcpp::TimerBase::SharedPtr control_timer_;
   
-    /* ---------- cached data ---------- */
-    nav_msgs::msg::Path::SharedPtr      path_;
-    nav_msgs::msg::Odometry::SharedPtr  odom_;
+    nav_msgs::msg::Path::SharedPtr current_path_ ;
+    nav_msgs::msg::Odometry::SharedPtr robot_odom_;
   
-    /* ---------- helpers ---------- */
-    void controlLoop();                               // timer callback
-    static double dist(double x1,double y1,double x2,double y2);
-    static double yawFromQuat(const geometry_msgs::msg::Quaternion& q);   
+    void controlLoop();
+    std::optional<geometry_msgs::msg::PoseStamped> findLookaheadPoint();
+    geometry_msgs::msg::Twist computeVelocity(const geometry_msgs::msg::PoseStamped &target);
+    double dist(const geometry_msgs::msg::Point &a, const geometry_msgs::msg::Point &b);
+    double extractYaw(const geometry_msgs::msg::Quaternion& q);
 };
 
 #endif
