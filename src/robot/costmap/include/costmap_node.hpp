@@ -22,7 +22,9 @@ class CostmapNode : public rclcpp::Node {
     int inf_radius = 10;
     double resolution = 0.1;
     std::vector<std::vector<int>> occupancy_grid;
+    nav_msgs::msg::OccupancyGrid costmap_grid;
 
+    void initializeCostmap();
     void inflateObstacles();
     void convertToGrid(double range, double angle, int& x_grid, int& y_grid);
 
